@@ -1,0 +1,25 @@
+# Feature extraction
+colmap feature_extractor --database_path database.db --image_path images --ImageReader.camera_model SIMPLE_RADIAL --SiftExtraction.estimate_affine_shape=true --SiftExtraction.domain_size_pooling=true --SiftExtraction.max_num_features=8192
+
+# Feature matching -- use sequential for video, exhaustive for unordered images
+colmap sequential_matcher --database_path database.db --SequentialMatching.overlap 10
+
+# (or exhaustive_matcher for unordered photos)
+# colmap exhaustive_matcher --database_path database.db
+
+# Sparse Reconstruction
+mkdir sparse
+colmap mapper --database_path database.db --image_path images --output_path sparse
+
+# Dense Reconstruction: undistort images first
+mkdir dense
+colmap image_undistorter --image_path images --input_path sparse/0 --output_path dense --output_type COLMAP --max_image_size 2000
+
+# Multi-view stereo dense matching
+colmap patch_match_stereo --workspace_path dense --workspace_format COLMAP --PatchMatchStereo.geom_consistency true
+
+# Merge into dense point cloud
+colmap stereo_fusion --workspace_path dense --workspace_format COLMAP --input_type geometric --output_path dense/fused.ply
+
+# (Optional) Mesh generation
+colmap poisson_mesher --input_path dense/fused.ply --output_path dense/meshed-poisson.ply
